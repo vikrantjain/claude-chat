@@ -83,7 +83,7 @@ The plugin reads two environment variables (both optional):
 | Env var | Default | Description |
 |---------|---------|-------------|
 | `CLAUDE_CHAT_BROKER` | `ws://localhost:4000` | Broker WebSocket URL |
-| `CLAUDE_CHAT_NAME` | auto-generated (`agent-xxx`) | This instance's display name |
+| `CLAUDE_CHAT_NAME` | the project directory name (a random suffix is added if it's already taken) | This instance's display name |
 
 Set them before launching Claude Code, e.g.:
 

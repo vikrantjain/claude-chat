@@ -1,8 +1,20 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { basename } from "node:path";
 
-const name = process.env.CLAUDE_CHAT_NAME || "agent-" + Math.random().toString(36).slice(2, 5);
+function randSuffix() {
+  return Math.random().toString(36).slice(2, 5);
+}
+// Default chat name is the current project's directory name, falling back to a
+// random "agent-xxx" when it can't be determined. Override with CLAUDE_CHAT_NAME.
+function projectName() {
+  const dir = basename(process.cwd());
+  return dir && dir !== "/" && dir !== "." ? dir : "";
+}
+const nameOverride = process.env.CLAUDE_CHAT_NAME;
+const baseName = nameOverride || projectName() || "agent-" + randSuffix();
+let name = baseName;
 const brokerUrl = process.env.CLAUDE_CHAT_BROKER || "ws://localhost:4000";
 // Stable for this process's lifetime so the broker can tell a reconnect of the
 // same client from a genuinely different client claiming the same name.
@@ -24,6 +36,7 @@ const mcp = new McpServer(
 // WebSocket state — `ws` is (re)assigned by connect() on every (re)connection.
 let ws: WebSocket;
 let registered = false;
+let nameAttempts = 0;
 let reconnectDelay = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 
@@ -78,6 +91,7 @@ async function handleMessage(event: MessageEvent) {
 
   if (msg.type === "registered") {
     registered = true;
+    nameAttempts = 0;
     return;
   }
 
@@ -113,10 +127,18 @@ async function handleMessage(event: MessageEvent) {
   }
 
   if (msg.type === "error") {
-    // An error received before we've registered means registration failed
-    // (e.g. the name is taken by a different client). That won't resolve on its
-    // own, so fail loudly instead of becoming a silent zombie connection.
+    // An error before we've registered means registration failed — almost
+    // always a name collision.
     if (!registered) {
+      // For an auto-derived name, retry with a random suffix rather than giving
+      // up. An explicit CLAUDE_CHAT_NAME is treated as intentional, so we fail
+      // loudly instead of silently renaming it.
+      if (!nameOverride && msg.message === "name already taken" && nameAttempts < 5) {
+        nameAttempts++;
+        name = `${baseName}-${randSuffix()}`;
+        ws.send(JSON.stringify({ type: "register", name, instanceId }));
+        return;
+      }
       console.error(`registration failed: ${msg.message} (name="${name}") — set a unique CLAUDE_CHAT_NAME`);
       process.exit(1);
     }
