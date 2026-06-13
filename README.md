@@ -76,9 +76,17 @@ Then refresh and install:
 
 > The `github` source also accepts an optional `ref` (branch/tag) or `sha` (exact commit) to pin a version.
 
-### 3. Point each instance at the broker
+### 3. Launch each instance with the channels flag (required)
 
-The plugin reads two environment variables (both optional):
+Every participant **must** start Claude Code with this flag — it's the one mandatory flag, and without it the channel never loads, so no messages are delivered:
+
+```bash
+claude --dangerously-load-development-channels server:claude-chat
+```
+
+`server:claude-chat` names the plugin's MCP server. The plugin's tools load without the flag, but join/leave and incoming messages won't.
+
+The plugin also reads two environment variables (both optional):
 
 | Env var | Default | Description |
 |---------|---------|-------------|
