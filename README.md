@@ -78,13 +78,17 @@ Then refresh and install:
 
 ### 3. Launch each instance with the channels flag (required)
 
-Every participant **must** start Claude Code with this flag — it's the one mandatory flag, and without it the channel never loads, so no messages are delivered:
+Every participant **must** start Claude Code with this flag — it's the one mandatory flag, and without it the channel never registers, so no messages are delivered (the `send_message` tool still returns "sent", but nothing arrives on the other side).
+
+Since you install this as a plugin, pass the **`plugin:` form**, where `<your-marketplace>` is the marketplace you added it under:
 
 ```bash
-claude --dangerously-load-development-channels server:claude-chat
+claude --dangerously-load-development-channels plugin:claude-chat@<your-marketplace>
 ```
 
-`server:claude-chat` names the plugin's MCP server. The plugin's tools load without the flag, but join/leave and incoming messages won't.
+When it's registered you'll see a dim line under the startup banner: `Channels (experimental) messages from plugin:claude-chat@… inject directly in this session`. If that line is missing, the channel didn't load — double-check the marketplace name (and that `channelsEnabled` is on if you're in a Team/Enterprise org).
+
+> Running from a checkout of this repo via a bare project `.mcp.json` instead of installing the plugin? Use the server form: `--dangerously-load-development-channels server:claude-chat`.
 
 The plugin also reads two environment variables (both optional):
 
