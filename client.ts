@@ -33,6 +33,13 @@ const mcp = new McpServer(
   }
 );
 
+// Opt-in debug logging to stderr (surfaces in ~/.claude/debug/<session>.txt).
+// Enable with CLAUDE_CHAT_DEBUG=1 to trace what reaches this client.
+const debug = !!process.env.CLAUDE_CHAT_DEBUG;
+function log(...args: unknown[]) {
+  if (debug) console.error("[claude-chat]", ...args);
+}
+
 // WebSocket state — `ws` is (re)assigned by connect() on every (re)connection.
 let ws: WebSocket;
 let registered = false;
@@ -92,6 +99,7 @@ async function handleMessage(event: MessageEvent) {
   if (msg.type === "registered") {
     registered = true;
     nameAttempts = 0;
+    log(`registered as "${name}" on ${brokerUrl}`);
     return;
   }
 
@@ -105,6 +113,7 @@ async function handleMessage(event: MessageEvent) {
   }
 
   if (msg.type === "message") {
+    log(`recv message from ${msg.from} — emitting channel notification`);
     await mcp.server.notification({
       method: "notifications/claude/channel",
       params: {
@@ -116,6 +125,7 @@ async function handleMessage(event: MessageEvent) {
   }
 
   if (msg.type === "joined" || msg.type === "left") {
+    log(`recv ${msg.type}: ${msg.name}`);
     await mcp.server.notification({
       method: "notifications/claude/channel",
       params: {
