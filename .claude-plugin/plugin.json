@@ -1,0 +1,12 @@
+{
+  "name": "claude-chat",
+  "version": "0.1.0",
+  "description": "Real-time chat between distributed Claude Code instances via a shared WebSocket broker, built on the experimental Channels API.",
+  "author": {
+    "name": "Vikrant Jain"
+  },
+  "homepage": "https://github.com/vikrantjain/claude-chat",
+  "repository": "https://github.com/vikrantjain/claude-chat",
+  "license": "MIT",
+  "keywords": ["chat", "multi-agent", "channels", "websocket", "distributed", "collaboration", "mcp"]
+}

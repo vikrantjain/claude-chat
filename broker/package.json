@@ -1,0 +1,24 @@
+{
+  "name": "claude-chat-broker",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Standalone WebSocket message router for the claude-chat Claude Code plugin. Run with `bunx claude-chat-broker`.",
+  "author": {
+    "name": "Vikrant Jain"
+  },
+  "homepage": "https://github.com/vikrantjain/claude-chat/tree/main/broker",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vikrantjain/claude-chat.git",
+    "directory": "broker"
+  },
+  "license": "MIT",
+  "keywords": ["claude-chat", "broker", "websocket", "mcp", "multi-agent", "claude-code"],
+  "bin": {
+    "claude-chat-broker": "./broker.ts"
+  },
+  "files": ["broker.ts", "LICENSE"],
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
