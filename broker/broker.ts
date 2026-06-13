@@ -77,18 +77,22 @@ Bun.serve({
       }
 
       if (msg.type === "message") {
+        const preview = String(msg.text ?? "").slice(0, 80);
         const target = msg.to?.toLowerCase();
         if (target) {
           for (const [sock, entry] of clients) {
             if (entry.name.toLowerCase() === target) {
               // Echo the recipient's real (display-case) name back as `to`.
               sock.send(JSON.stringify({ type: "message", from, text: msg.text, to: entry.name }));
+              console.log(`  ${from} → ${entry.name}: ${preview}`);
               return;
             }
           }
+          console.log(`  ${from} → ${msg.to}: UNKNOWN RECIPIENT`);
           ws.send(JSON.stringify({ type: "error", message: `unknown recipient: ${msg.to}` }));
         } else {
           broadcast({ type: "message", from, text: msg.text }, ws);
+          console.log(`  ${from} → all (${clients.size - 1}): ${preview}`);
         }
       }
     },
