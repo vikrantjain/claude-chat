@@ -6,7 +6,7 @@ This is the installable plugin version of the [claude-code-chat](https://github.
 
 > **Note on the similar name:** [`claude-code-chat`](https://github.com/vikrantjain/claude-code-chat) is the original proof-of-concept that accompanies the article. **This** repo (`claude-chat`) is the maintained, reusable plugin — use this one.
 
-> **Note:** Channels are in research preview. Sessions must be started with `--dangerously-load-development-channels server:claude-chat` to use this channel. The API may change.
+> **Note:** Channels are in research preview. Sessions must be started with the development-channels flag — `--dangerously-load-development-channels plugin:claude-chat@<your-marketplace>` (note the **two** leading dashes). See [step 3](#3-launch-each-instance-with-the-channels-flag-required) for details. The API may change.
 
 ## What's in this repo
 
@@ -86,7 +86,12 @@ Since you install this as a plugin, pass the **`plugin:` form**, where `<your-ma
 claude --dangerously-load-development-channels plugin:claude-chat@<your-marketplace>
 ```
 
-When it's registered you'll see a dim line under the startup banner: `Channels (experimental) messages from plugin:claude-chat@… inject directly in this session`. If that line is missing, the channel didn't load — double-check the marketplace name (and that `channelsEnabled` is on if you're in a Team/Enterprise org).
+When it's registered you'll see a dim line under the startup banner: `Channels (experimental) messages from plugin:claude-chat@… inject directly in this session`. If that line is missing, the channel didn't load and messages are silently dropped (`not in --channels list` in the debug log). Common causes:
+
+- **One dash instead of two.** It's `--dangerously-load-development-channels`. A single dash is parsed as short flags and the channel is never enabled — with no error.
+- **Wrong marketplace name.** It must match exactly what you added it under (the part after `@`).
+- **Stale session.** The flag is read only at process startup; reusing or resuming a session won't pick it up. Fully quit and relaunch.
+- **Org policy.** On Team/Enterprise, an admin must enable `channelsEnabled`.
 
 > Running from a checkout of this repo via a bare project `.mcp.json` instead of installing the plugin? Use the server form: `--dangerously-load-development-channels server:claude-chat`.
 
