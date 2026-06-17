@@ -9,15 +9,26 @@
   "homepage": "https://github.com/vikrantjain/claude-chat/tree/main/broker",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vikrantjain/claude-chat.git",
+    "url": "git+https://github.com/vikrantjain/claude-chat.git",
     "directory": "broker"
   },
   "license": "MIT",
-  "keywords": ["claude-chat", "broker", "websocket", "mcp", "multi-agent", "claude-code"],
+  "keywords": [
+    "claude-chat",
+    "broker",
+    "websocket",
+    "mcp",
+    "multi-agent",
+    "claude-code"
+  ],
   "bin": {
-    "claude-chat-broker": "./broker.ts"
+    "claude-chat-broker": "bin.js"
   },
-  "files": ["broker.ts", "LICENSE"],
+  "files": [
+    "bin.js",
+    "broker.ts",
+    "LICENSE"
+  ],
   "engines": {
     "bun": ">=1.0.0"
   }
