@@ -4,17 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Runtime
 
-Both `client.ts` and `broker/broker.ts` require **Bun** — they use Bun's native WebSocket APIs and are not Node-compatible. The broker is run directly as TypeScript; the client ships as a prebuilt bundle (below).
-
-## Client bundle (rebuild before every release)
-
-`.mcp.json` runs **`client.bundle.js`**, not `client.ts` — a self-contained bundle of `client.ts` plus its deps (`@modelcontextprotocol/sdk`, `zod`). This is deliberate: Claude Code installs a plugin by copying its files into the plugin cache **without running `bun install`**, so a freshly installed plugin has no `node_modules`. Relying on Bun's runtime auto-install meant the MCP server fetched deps from npm on first launch — slow enough to risk Claude Code's 30s MCP startup timeout, and a hard failure offline. The committed bundle removes that: startup is instant with zero runtime dependency resolution.
-
-Rebuild after any change to `client.ts` (or a dependency bump) and commit the result:
-
-```bash
-bun run build      # = bun build client.ts --target=bun --outfile=client.bundle.js
-```
+Both `client.ts` and `broker/broker.ts` require **Bun** — they use Bun's native WebSocket APIs and are not Node-compatible. There is no build step; Bun runs TypeScript directly.
 
 ## Debug logging
 

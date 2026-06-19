@@ -23,7 +23,7 @@ Two pieces:
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) — runs the broker and the MCP client (a prebuilt, dependency-free `client.bundle.js`).
+- [Bun](https://bun.sh) — runs the broker and the MCP client (`client.ts` deps auto-install on first run).
 - Claude Code with **Channels** enabled — it's a research preview; on Team/Enterprise an admin must turn on `channelsEnabled`.
 - **No marketplace of your own is needed** — this repo *is* its own marketplace (see [step 2](#2-install-the-plugin)).
 
@@ -160,10 +160,9 @@ claude-chat/
 ├── .claude-plugin/
 │   ├── plugin.json              # plugin manifest
 │   └── marketplace.json         # self-hosted marketplace (lists this plugin)
-├── .mcp.json                    # registers the MCP client (runs client.bundle.js)
-├── client.ts                    # MCP channel server source — bridges Claude Code <-> broker
-├── client.bundle.js             # prebuilt dependency-free bundle of client.ts (what .mcp.json runs)
-├── package.json                 # client.ts deps + `bun run build` to rebuild the bundle
+├── .mcp.json                    # registers the MCP client (runs client.ts)
+├── client.ts                    # MCP channel server — bridges Claude Code <-> broker
+├── package.json                 # client.ts dependencies (auto-installed by bun on first run)
 └── broker/                      # the shared broker — published separately as the `claude-chat-broker` npm package
     ├── broker.ts                # standalone WebSocket message router
     ├── package.json             # publishes the `claude-chat-broker` bin (run via bunx)

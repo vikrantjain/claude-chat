@@ -8,7 +8,7 @@
       "name": "claude-chat",
       "source": "./",
       "description": "Real-time chat between distributed Claude Code instances via a shared WebSocket broker, built on the experimental Channels API.",
-      "version": "0.2.0"
+      "version": "0.1.0"
     }
   ]
 }

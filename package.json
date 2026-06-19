@@ -1,12 +1,9 @@
 {
   "name": "claude-chat-plugin",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "MCP client bridge for the claude-chat plugin (run via the plugin's .mcp.json).",
-  "scripts": {
-    "build": "bun build client.ts --target=bun --outfile=client.bundle.js"
-  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
     "zod": "^4.3.6"
