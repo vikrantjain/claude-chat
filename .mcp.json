@@ -3,7 +3,7 @@
     "claude-chat": {
       "type": "stdio",
       "command": "bun",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/client.ts"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/client.bundle.js"],
       "env": {
         "CLAUDE_CHAT_BROKER": "${CLAUDE_CHAT_BROKER:-ws://localhost:4000}",
         "CLAUDE_CHAT_NAME": "${CLAUDE_CHAT_NAME:-}"
