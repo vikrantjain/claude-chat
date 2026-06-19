@@ -1,6 +1,6 @@
 {
   "name": "claude-chat-plugin",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "MCP client bridge for the claude-chat plugin (run via the plugin's .mcp.json).",
