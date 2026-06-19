@@ -2,29 +2,56 @@
 
 A Claude Code plugin that lets multiple Claude Code instances chat with each other in real time through a shared WebSocket broker — built on the experimental [Channels API](https://code.claude.com/docs/en/channels).
 
-This is the installable plugin version of the [claude-code-chat](https://github.com/vikrantjain/claude-code-chat) proof of concept, explained in [Distributed Claude Code Agents: Collaboration Across Machines](https://vikrantjain.hashnode.dev/distributed-claude-code-agents-across-machines).
+## What it's for
 
-> **Note on the similar name:** [`claude-code-chat`](https://github.com/vikrantjain/claude-code-chat) is the original proof-of-concept that accompanies the article. **This** repo (`claude-chat`) is the maintained, reusable plugin — use this one.
+Use it when work spans more than one codebase:
+
+- **Coordinate a multi-service feature** — give each repo its own Claude Code instance and let them agree on a contract and hand off work over the channel, instead of one session trying to juggle every repo.
+- **Run agents across machines** — the broker is the only shared piece, so instances can sit on different laptops, hosts, or continents.
+- **Keep each session lean** — every instance carries only its own repo's context.
+
+The full real-world walkthrough — three Claude Code instances shipping a cross-service feature together — is written up in [I Ran Three Claude Code Agents as Three Teams — and They Shipped a Real Feature](https://vikrantjain.github.io/three-claude-code-instances-one-feature/).
 
 > **Note:** Channels are in research preview. Sessions must be started with the development-channels flag — `--dangerously-load-development-channels plugin:claude-chat@<your-marketplace>` (note the **two** leading dashes). See [step 3](#3-launch-each-instance-with-the-channels-flag-required) for details. The API may change.
 
-## What's in this repo
+## Quickstart (two instances, one machine)
 
+The fastest way to see it work — no marketplace needed. You'll need [Bun](https://bun.sh) and Claude Code with Channels enabled.
+
+```bash
+git clone https://github.com/vikrantjain/claude-chat
+cd claude-chat
+
+# Terminal 1 — the broker
+bunx claude-chat-broker
+
+# Terminal 2 — first instance, from the repo dir
+CLAUDE_CHAT_NAME=alice claude --dangerously-load-development-channels server:claude-chat
+
+# Terminal 3 — second instance, same dir
+CLAUDE_CHAT_NAME=bob claude --dangerously-load-development-channels server:claude-chat
 ```
-claude-chat/
-├── .claude-plugin/plugin.json   # plugin manifest
-├── .mcp.json                    # registers the MCP client (runs client.ts)
-├── client.ts                    # MCP channel server — bridges Claude Code <-> broker
-├── package.json                 # client.ts dependencies (auto-installed by bun on first run)
-└── broker/                      # the shared broker — published separately as the `claude-chat-broker` npm package
-    ├── broker.ts                # standalone WebSocket message router
-    ├── package.json             # publishes the `claude-chat-broker` bin (run via bunx)
-    └── Dockerfile
-```
 
-The **plugin** (repo root) is client-side and installs per machine. The **broker** (`broker/`) is shared infrastructure — *one* instance that every participant connects to, so only the host runs it; everyone else just points `CLAUDE_CHAT_BROKER` at it. Claude Code's plugin loader ignores the `broker/` directory; it's shipped here as source but published independently to npm as [`claude-chat-broker`](https://www.npmjs.com/package/claude-chat-broker).
+Each instance prints a dim `Channels (experimental) …` line at startup once it's connected. Now ask `alice` to `list_participants`, then to send `bob` a message — it arrives inline in bob's session. That's the whole idea; the rest of this README is about doing it properly and across machines.
 
-## Setup
+> Running from a checkout like this uses the repo's bare `.mcp.json` and the **`server:`** form of the flag. Installed as a plugin (below), you use the **`plugin:`** form instead.
+
+## How it's structured
+
+Two pieces:
+
+- The **plugin** (repo root) is client-side and installs **per machine**. It's the MCP channel server (`client.ts`) that bridges your Claude Code session to the broker.
+- The **broker** (`broker/`) is shared infrastructure — *one* instance that every participant connects to, so only the host runs it; everyone else points `CLAUDE_CHAT_BROKER` at it. It's published independently to npm as [`claude-chat-broker`](https://www.npmjs.com/package/claude-chat-broker) (so `bunx claude-chat-broker` just works), and Claude Code's plugin loader ignores the `broker/` directory.
+
+## Prerequisites
+
+- [Bun](https://bun.sh) — runs the broker and the MCP client (`client.ts` deps auto-install on first run).
+- Claude Code with **Channels** enabled — it's a research preview; on Team/Enterprise an admin must turn on `channelsEnabled`.
+- **Marketplace install only:** a Claude Code plugin marketplace you control. Don't have one? The [Quickstart](#quickstart-two-instances-one-machine) above needs no marketplace.
+
+## Setup (full / multi-machine)
+
+The Quickstart above is the fastest local try. This is the proper install — a per-machine plugin plus one shared broker — and the path you'd use across machines.
 
 ### 1. Run the broker (once, somewhere reachable)
 
@@ -55,6 +82,8 @@ bun run broker/broker.ts
 </details>
 
 ### 2. Install the plugin
+
+This is the proper, per-machine install. (For a quick local try without a marketplace, use the [Quickstart](#quickstart-two-instances-one-machine) instead.)
 
 This repo is a standalone plugin (no marketplace of its own). Add it to a marketplace you control by listing it as a `github` source in that marketplace's `.claude-plugin/marketplace.json`:
 
@@ -138,3 +167,21 @@ Join/leave events are broadcast automatically as instances connect and disconnec
 
 - Messages are ephemeral — no history or catch-up for late joiners.
 - No authentication — all connections to the broker are trusted. Run the broker on a trusted network.
+
+## Repo layout
+
+```
+claude-chat/
+├── .claude-plugin/plugin.json   # plugin manifest
+├── .mcp.json                    # registers the MCP client (runs client.ts)
+├── client.ts                    # MCP channel server — bridges Claude Code <-> broker
+├── package.json                 # client.ts dependencies (auto-installed by bun on first run)
+└── broker/                      # the shared broker — published separately as the `claude-chat-broker` npm package
+    ├── broker.ts                # standalone WebSocket message router
+    ├── package.json             # publishes the `claude-chat-broker` bin (run via bunx)
+    └── Dockerfile
+```
+
+## Contributing & feedback
+
+This is an early, research-preview build and the rough edges are real — issues, ideas, and PRs are very welcome. If you try it on something real, I'd genuinely like to hear how it went.
