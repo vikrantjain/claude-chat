@@ -1,0 +1,14 @@
+{
+  "name": "vikrant-plugins",
+  "owner": {
+    "name": "Vikrant Jain"
+  },
+  "plugins": [
+    {
+      "name": "claude-chat",
+      "source": "./",
+      "description": "Real-time chat between distributed Claude Code instances via a shared WebSocket broker, built on the experimental Channels API.",
+      "version": "0.1.0"
+    }
+  ]
+}

@@ -12,29 +12,7 @@ Use it when work spans more than one codebase:
 
 The full real-world walkthrough — three Claude Code instances shipping a cross-service feature together — is written up in [I Ran Three Claude Code Agents as Three Teams — and They Shipped a Real Feature](https://vikrantjain.github.io/three-claude-code-instances-one-feature/).
 
-> **Note:** Channels are in research preview. Sessions must be started with the development-channels flag — `--dangerously-load-development-channels plugin:claude-chat@<your-marketplace>` (note the **two** leading dashes). See [step 3](#3-launch-each-instance-with-the-channels-flag-required) for details. The API may change.
-
-## Quickstart (two instances, one machine)
-
-The fastest way to see it work — no marketplace needed. You'll need [Bun](https://bun.sh) and Claude Code with Channels enabled.
-
-```bash
-git clone https://github.com/vikrantjain/claude-chat
-cd claude-chat
-
-# Terminal 1 — the broker
-bunx claude-chat-broker
-
-# Terminal 2 — first instance, from the repo dir
-CLAUDE_CHAT_NAME=alice claude --dangerously-load-development-channels server:claude-chat
-
-# Terminal 3 — second instance, same dir
-CLAUDE_CHAT_NAME=bob claude --dangerously-load-development-channels server:claude-chat
-```
-
-Each instance prints a dim `Channels (experimental) …` line at startup once it's connected. Now ask `alice` to `list_participants`, then to send `bob` a message — it arrives inline in bob's session. That's the whole idea; the rest of this README is about doing it properly and across machines.
-
-> Running from a checkout like this uses the repo's bare `.mcp.json` and the **`server:`** form of the flag. Installed as a plugin (below), you use the **`plugin:`** form instead.
+> **Note:** Channels are in research preview. Sessions must be started with the development-channels flag — `--dangerously-load-development-channels plugin:claude-chat@vikrant-plugins` (note the **two** leading dashes). See [step 3](#3-launch-each-instance-with-the-channels-flag-required) for details. The API may change.
 
 ## How it's structured
 
@@ -47,11 +25,11 @@ Two pieces:
 
 - [Bun](https://bun.sh) — runs the broker and the MCP client (`client.ts` deps auto-install on first run).
 - Claude Code with **Channels** enabled — it's a research preview; on Team/Enterprise an admin must turn on `channelsEnabled`.
-- **Marketplace install only:** a Claude Code plugin marketplace you control. Don't have one? The [Quickstart](#quickstart-two-instances-one-machine) above needs no marketplace.
+- **No marketplace of your own is needed** — this repo *is* its own marketplace (see [step 2](#2-install-the-plugin)).
 
 ## Setup (full / multi-machine)
 
-The Quickstart above is the fastest local try. This is the proper install — a per-machine plugin plus one shared broker — and the path you'd use across machines.
+A per-machine plugin plus one shared broker. The same steps work whether the instances are on one laptop or spread across machines — only the broker URL differs.
 
 ### 1. Run the broker (once, somewhere reachable)
 
@@ -83,9 +61,19 @@ bun run broker/broker.ts
 
 ### 2. Install the plugin
 
-This is the proper, per-machine install. (For a quick local try without a marketplace, use the [Quickstart](#quickstart-two-instances-one-machine) instead.)
+This repo **is its own plugin marketplace**, so there's nothing to set up on your side — add the repo as a marketplace, then install:
 
-This repo is a standalone plugin (no marketplace of its own). Add it to a marketplace you control by listing it as a `github` source in that marketplace's `.claude-plugin/marketplace.json`:
+```
+/plugin marketplace add vikrantjain/claude-chat
+/plugin install claude-chat@vikrant-plugins
+```
+
+`claude-chat@vikrant-plugins` is `<plugin>@<marketplace>`: the repo hosts a marketplace named `vikrant-plugins` that contains the `claude-chat` plugin. (You add the **repo** `vikrantjain/claude-chat`; it registers under the marketplace name `vikrant-plugins`.)
+
+<details>
+<summary>Prefer your own marketplace? (e.g. to bundle several plugins)</summary>
+
+Instead of adding this repo directly, you can list it as a `github` source in a marketplace you control, in that marketplace's `.claude-plugin/marketplace.json`:
 
 ```json
 {
@@ -96,23 +84,18 @@ This repo is a standalone plugin (no marketplace of its own). Add it to a market
 }
 ```
 
-Then refresh and install:
+Then `/plugin marketplace update <your-marketplace>` and `/plugin install claude-chat@<your-marketplace>`. The `github` source also accepts an optional `ref` (branch/tag) or `sha` (exact commit) to pin a version.
 
-```
-/plugin marketplace update <your-marketplace>
-/plugin install claude-chat
-```
-
-> The `github` source also accepts an optional `ref` (branch/tag) or `sha` (exact commit) to pin a version.
+</details>
 
 ### 3. Launch each instance with the channels flag (required)
 
 Every participant **must** start Claude Code with this flag — it's the one mandatory flag, and without it the channel never registers, so no messages are delivered (the `send_message` tool still returns "sent", but nothing arrives on the other side).
 
-Since you install this as a plugin, pass the **`plugin:` form**, where `<your-marketplace>` is the marketplace you added it under:
+Since you install this as a plugin, pass the **`plugin:` form**. With the self-hosted install above the marketplace is named `vikrant-plugins`, so it's `plugin:claude-chat@vikrant-plugins`; if you added it under your own marketplace, use that name after the `@` instead:
 
 ```bash
-claude --dangerously-load-development-channels plugin:claude-chat@<your-marketplace>
+claude --dangerously-load-development-channels plugin:claude-chat@vikrant-plugins
 ```
 
 When it's registered you'll see a dim line under the startup banner: `Channels (experimental) messages from plugin:claude-chat@… inject directly in this session`. If that line is missing, the channel didn't load and messages are silently dropped (`not in --channels list` in the debug log). Common causes:
@@ -136,10 +119,12 @@ Set them before launching Claude Code, e.g.:
 ```bash
 export CLAUDE_CHAT_NAME=alice
 export CLAUDE_CHAT_BROKER=ws://192.168.1.50:4000
-claude --dangerously-load-development-channels server:claude-chat
+claude --dangerously-load-development-channels plugin:claude-chat@vikrant-plugins
 ```
 
 Start a second instance (e.g. `bob`) the same way, pointed at the same broker.
+
+To confirm it works, ask `alice` to `list_participants`, then to send `bob` a message — it arrives inline in bob's session.
 
 ## MCP Tools
 
@@ -172,7 +157,9 @@ Join/leave events are broadcast automatically as instances connect and disconnec
 
 ```
 claude-chat/
-├── .claude-plugin/plugin.json   # plugin manifest
+├── .claude-plugin/
+│   ├── plugin.json              # plugin manifest
+│   └── marketplace.json         # self-hosted marketplace (lists this plugin)
 ├── .mcp.json                    # registers the MCP client (runs client.ts)
 ├── client.ts                    # MCP channel server — bridges Claude Code <-> broker
 ├── package.json                 # client.ts dependencies (auto-installed by bun on first run)
