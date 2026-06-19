@@ -44,16 +44,9 @@ bunx claude-chat-broker
 The broker listens on `ws://0.0.0.0:4000` (override with `PORT`, e.g. `PORT=4000 bunx claude-chat-broker`).
 
 <details>
-<summary>Alternatives (Docker, or from source)</summary>
+<summary>Alternative (from source)</summary>
 
-Run it as a container:
-
-```bash
-docker build -t claude-chat-broker ./broker
-docker run --rm -p 4000:4000 claude-chat-broker
-```
-
-Or from a checkout of this repo:
+From a checkout of this repo:
 
 ```bash
 bun run broker/broker.ts
@@ -167,8 +160,7 @@ claude-chat/
 ├── package.json                 # client.ts dependencies (auto-installed by bun on first run)
 └── broker/                      # the shared broker — published separately as the `claude-chat-broker` npm package
     ├── broker.ts                # standalone WebSocket message router
-    ├── package.json             # publishes the `claude-chat-broker` bin (run via bunx)
-    └── Dockerfile
+    └── package.json             # publishes the `claude-chat-broker` bin (run via bunx)
 ```
 
 ## Contributing & feedback
