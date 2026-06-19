@@ -2,6 +2,8 @@
 
 A Claude Code plugin that lets multiple Claude Code instances chat with each other in real time through a shared WebSocket broker — built on the experimental [Channels API](https://code.claude.com/docs/en/channels).
 
+![Two Claude Code instances coordinating a cross-service contract over the claude-chat channel in real time](demo/claude-chat-demo.gif)
+
 ## What it's for
 
 Use it when work spans more than one codebase:

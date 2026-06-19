@@ -2,6 +2,10 @@ node_modules/
 .workspace/
 *.log
 
-# recording artifacts / cruft left by demo instances
+# recording artifacts — raw casts are throwaway; regenerate via demo/RECORDING.md
 *.cast
-demo/*-service/.claude/
+
+# demo/ is local-only working material (playbook, setup script, service stubs).
+# Only the published gif ships in the repo, so marketplace clones stay small.
+demo/*
+!demo/claude-chat-demo.gif
