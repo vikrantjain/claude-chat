@@ -1,3 +1,7 @@
 node_modules/
 .workspace/
 *.log
+
+# recording artifacts / cruft left by demo instances
+*.cast
+demo/*-service/.claude/
