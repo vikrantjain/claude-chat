@@ -54,11 +54,38 @@ function completer(line: string): [string[], string] {
   return [[], line];
 }
 
+// --- sticky addressing target ---
+// null target with broadcast=false => unset (a bare line is rejected).
+let target: string | null = null;
+let broadcast = false;
+
+function updatePrompt() {
+  if (broadcast) rl.setPrompt("(broadcast) ❯ ");
+  else if (target) rl.setPrompt(`${target} ❯ `);
+  else rl.setPrompt("(no target) ❯ ");
+}
+
+type Parsed = { kind: "all" | "name" | "none"; target?: string; text: string; selectOnly: boolean };
+// Leading-only @-parsing: only a leading @token routes; the rest is verbatim.
+function parseLine(input: string): Parsed {
+  if (input.startsWith("@")) {
+    const m = input.match(/^@(\S+)\s*(.*)$/s);
+    if (m) {
+      const token = m[1];
+      const text = m[2];
+      const selectOnly = text === "";
+      if (token.toLowerCase() === "all") return { kind: "all", text, selectOnly };
+      return { kind: "name", target: token, text, selectOnly };
+    }
+  }
+  return { kind: "none", text: input, selectOnly: false };
+}
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
   completer,
-  prompt: "❯ ",
+  prompt: "(no target) ❯ ",
 });
 
 // Print a line *above* the pinned input, then redraw the in-progress input
@@ -125,6 +152,14 @@ function handleMessage(event: MessageEvent) {
     case "left":
       if (msg.name) roster.delete(msg.name.toLowerCase());
       printAbove(dim(`* ${msg.name} left`));
+      // If the sticky target just left, clear it so a bare line can't silently
+      // hit the broker's unknown-recipient error.
+      if (target && msg.name && msg.name.toLowerCase() === target.toLowerCase()) {
+        target = null;
+        printAbove(dim(`* target ${msg.name} left — target cleared`));
+        updatePrompt();
+        rl.prompt(true);
+      }
       break;
 
     case "error":
@@ -194,13 +229,46 @@ rl.on("line", (input) => {
     rl.prompt();
     return;
   }
+
+  const p = parseLine(input);
+
+  // Apply sticky-target selection from a leading @token.
+  if (p.kind === "all") {
+    broadcast = true;
+    target = null;
+    updatePrompt();
+  } else if (p.kind === "name") {
+    target = p.target!;
+    broadcast = false;
+    updatePrompt();
+  }
+
+  // A leading @token alone just selects the target — send nothing.
+  if (p.kind !== "none" && p.selectOnly) {
+    rl.prompt();
+    return;
+  }
+
+  // Resolve the destination for the text we are about to send.
+  if (p.kind === "none" && !broadcast && !target) {
+    printAbove(dim("! no target — start with @name or @all (or select one first)"));
+    rl.prompt();
+    return;
+  }
   if (!isOpen()) {
     printAbove(dim("! not connected — message not sent"));
     rl.prompt();
     return;
   }
-  send({ type: "message", text: input });
-  printAbove(`${dim("me → all ❯")} ${input}`);
+
+  const toName = p.kind === "name" ? p.target! : p.kind === "all" ? null : target;
+  if (toName) {
+    send({ type: "message", text: p.text, to: toName });
+    printAbove(`${dim(`me → ${toName} ❯`)} ${p.text}`);
+  } else {
+    send({ type: "message", text: p.text });
+    printAbove(`${dim("me → all ❯")} ${p.text}`);
+  }
   rl.prompt();
 });
 
