@@ -188,17 +188,28 @@ function handleMessage(event: MessageEvent) {
   }
 }
 
+let reconnectDelay = 1000;
+const MAX_RECONNECT_DELAY = 30000;
+let shuttingDown = false;
+
 function connect() {
   ws = new WebSocket(brokerUrl);
   ws.onopen = () => {
+    reconnectDelay = 1000; // reset backoff on a successful open
     registered = false;
+    // Re-register with the same stable instanceId so the broker takes the name
+    // over silently on a transient reconnect. The roster is re-seeded by the
+    // `list` sent on `registered`.
     ws.send(JSON.stringify({ type: "register", name, instanceId }));
   };
   ws.onmessage = handleMessage;
   ws.onerror = () => printAbove(dim("! websocket error — is the broker running?"));
   ws.onclose = () => {
     registered = false;
-    printAbove(dim("! broker connection closed"));
+    if (shuttingDown) return;
+    printAbove(dim(`! connection lost — reconnecting in ${reconnectDelay}ms`));
+    setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
   };
 }
 
@@ -281,6 +292,7 @@ rl.on("line", (input) => {
 });
 
 function shutdown() {
+  shuttingDown = true;
   try {
     ws?.close();
   } catch {}
