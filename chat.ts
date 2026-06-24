@@ -48,10 +48,17 @@ function rosterNames(): string[] {
   return [...roster.values()];
 }
 
+// Complete a leading @<prefix> token against the live roster (plus @all).
+// Only fires while typing the leading token (no whitespace yet), so normal
+// message typing is unaffected.
 function completer(line: string): [string[], string] {
-  // Stub for Feature 1 — Feature 3 wires this to the roster. Returning no
-  // candidates keeps normal typing unaffected.
-  return [[], line];
+  if (!line.startsWith("@") || /\s/.test(line)) return [[], line];
+  const prefix = line.slice(1).toLowerCase();
+  const hits = rosterNames()
+    .filter((n) => n.toLowerCase().startsWith(prefix))
+    .map((n) => "@" + n);
+  if ("all".startsWith(prefix)) hits.unshift("@all");
+  return [hits, line];
 }
 
 // --- sticky addressing target ---
@@ -202,10 +209,11 @@ function handleCommand(line: string) {
     case "help":
       printAbove(dim("commands:  /help  /who  /quit   (Ctrl-C also exits)"));
       break;
-    case "who":
-      // Stubbed for Feature 1 — real roster output arrives with Feature 3.
-      printAbove(dim("/who — roster not available yet"));
+    case "who": {
+      const names = rosterNames();
+      printAbove(dim(names.length ? `/who — ${names.join(", ")}` : "/who — (no other participants)"));
       break;
+    }
     case "quit":
       shutdown();
       break;
