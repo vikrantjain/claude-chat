@@ -66,10 +66,14 @@ function completer(line: string): [string[], string] {
 let target: string | null = null;
 let broadcast = false;
 
+// Mirror of the prompt string currently shown, so we can measure how many
+// physical rows the echoed input line occupied (it may have wrapped).
+let currentPrompt = "(no target) ❯ ";
 function updatePrompt() {
-  if (broadcast) rl.setPrompt("(broadcast) ❯ ");
-  else if (target) rl.setPrompt(`${target} ❯ `);
-  else rl.setPrompt("(no target) ❯ ");
+  if (broadcast) currentPrompt = "(broadcast) ❯ ";
+  else if (target) currentPrompt = `${target} ❯ `;
+  else currentPrompt = "(no target) ❯ ";
+  rl.setPrompt(currentPrompt);
 }
 
 type Parsed = { kind: "all" | "name" | "none"; target?: string; text: string; selectOnly: boolean };
@@ -104,9 +108,22 @@ function printAbove(text: string) {
   rl.prompt(true);
 }
 
+// Erase readline's own echo of a just-submitted line. The prompt+input may have
+// wrapped across several terminal rows, so walk up and clear each one — clearing
+// only a single row would leave orphaned wrapped fragments on screen.
+function eraseSubmittedEcho(input: string) {
+  const cols = process.stdout.columns || 80;
+  const rows = Math.max(1, Math.ceil((currentPrompt.length + input.length) / cols));
+  for (let i = 0; i < rows; i++) {
+    readline.moveCursor(process.stdout, 0, -1);
+    readline.clearLine(process.stdout, 0);
+  }
+}
+
 // --- WebSocket lifecycle ---
 let ws: WebSocket;
 let registered = false;
+let everRegistered = false;
 let nameAttempts = 0;
 
 function isOpen() {
@@ -129,8 +146,15 @@ function handleMessage(event: MessageEvent) {
       registered = true;
       nameAttempts = 0;
       name = msg.name || name;
-      printAbove(dim(`* connected to ${brokerUrl} as "${name}"  (/help for commands)`));
-      send({ type: "list", id: 0 }); // seed the roster
+      // Banner once on first connect; later reconnects get a quiet confirmation
+      // (the "connection lost — reconnecting" line already announced the blip).
+      if (!everRegistered) {
+        everRegistered = true;
+        printAbove(dim(`* connected to ${brokerUrl} as "${name}"  (/help for commands)`));
+      } else {
+        printAbove(dim(`* reconnected as "${name}"`));
+      }
+      send({ type: "list", id: 0 }); // seed/re-seed the roster
       break;
 
     case "participants":
@@ -139,6 +163,15 @@ function handleMessage(event: MessageEvent) {
         if (typeof n === "string" && n.toLowerCase() !== name.toLowerCase()) {
           roster.set(n.toLowerCase(), n);
         }
+      }
+      // If our sticky target vanished while we were disconnected, we never saw
+      // its "left" frame. Drop it now so a bare line can't hit the broker's
+      // unknown-recipient error.
+      if (target && !roster.has(target.toLowerCase())) {
+        const gone = target;
+        target = null;
+        updatePrompt();
+        printAbove(dim(`* target ${gone} is no longer here — target cleared`));
       }
       break;
 
@@ -163,9 +196,8 @@ function handleMessage(event: MessageEvent) {
       // hit the broker's unknown-recipient error.
       if (target && msg.name && msg.name.toLowerCase() === target.toLowerCase()) {
         target = null;
-        printAbove(dim(`* target ${msg.name} left — target cleared`));
         updatePrompt();
-        rl.prompt(true);
+        printAbove(dim(`* target ${msg.name} left — target cleared`));
       }
       break;
 
@@ -203,7 +235,9 @@ function connect() {
     ws.send(JSON.stringify({ type: "register", name, instanceId }));
   };
   ws.onmessage = handleMessage;
-  ws.onerror = () => printAbove(dim("! websocket error — is the broker running?"));
+  // onclose fires right after and prints the actionable "reconnecting" line, so
+  // keep onerror quiet (debug only) to avoid a double diagnostic per failure.
+  ws.onerror = () => log("websocket error");
   ws.onclose = () => {
     registered = false;
     if (shuttingDown) return;
@@ -236,8 +270,7 @@ function handleCommand(line: string) {
 rl.on("line", (input) => {
   // Erase readline's own echo of the just-submitted line so we can re-render it
   // (formatted) via printAbove instead of showing it twice.
-  readline.moveCursor(process.stdout, 0, -1);
-  readline.clearLine(process.stdout, 0);
+  eraseSubmittedEcho(input);
 
   if (input.startsWith("/")) {
     handleCommand(input);
