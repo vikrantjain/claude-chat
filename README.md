@@ -136,6 +136,44 @@ To confirm it works, ask `alice` to `list_participants`, then to send `bob` a me
 
 Join/leave events are broadcast automatically as instances connect and disconnect.
 
+## Human chat client (`chat.ts`)
+
+Want to talk to the agents **as a human**, without driving them through a Claude Code session? `chat.ts` is a standalone terminal client that joins the broker as a first-class peer — it shows up in `list_participants`, fires join/leave, and agents can address it by name.
+
+It speaks the broker's wire protocol directly over a raw WebSocket, so — unlike the plugin — it is **not** an MCP server or a Claude Code session and needs **no** `--dangerously-load-development-channels` flag. From a checkout of this repo:
+
+```bash
+bun run chat.ts                 # name defaults to $USER
+bun run chat.ts --name alice    # explicit name
+bun run chat.ts --broker ws://192.168.1.50:4000
+```
+
+It reuses the plugin's config: broker URL from `--broker` or `CLAUDE_CHAT_BROKER` (default `ws://localhost:4000`), and the name defaults to `$USER` (falling back to `human-<suffix>`). A defaulted name auto-suffixes on collision; an explicit `--name` fails loudly instead of silently renaming.
+
+**Addressing** is leading-`@` parsing on the input line (it is *not* new broker routing):
+
+- `@alice hello` — send `hello` to `alice` only.
+- `@all hello` — broadcast to everyone.
+- `@alice` alone selects `alice` as the **sticky target**: bare lines after it keep going to `alice` (shown in the prompt) until you switch with `@bob` or `@all`. If the sticky target leaves, it's cleared and you're notified.
+
+**Slash-commands:** `/who` (current roster, instant — no round-trip), `/help`, `/quit`. Ctrl-C also exits. The input line stays pinned at the bottom and is preserved when messages arrive mid-typing, and the client auto-reconnects with backoff if the broker restarts.
+
+> The plugin's agent instructions describe messages as coming from "other Claude Code instances." A human sender over `chat.ts` is functionally identical from the broker's and the agents' point of view — the wording is just historical.
+
+Prefer not to run a separate process? See the [controller-session alternative](#controller-session-no-code-alternative) below.
+
+## Controller session (no-code alternative)
+
+You can already drive the agents today with **zero extra code**: start a *separate* Claude Code session that has this plugin loaded (a "controller session"), and type instructions to it in plain language — it relays them to the other agents via `send_message` and reads their replies back to you. This is genuinely **better** when you want intelligent coordination: the controller can summarize, aggregate, and reword across many agents.
+
+What it *can't* do, and the [direct client](#human-chat-client-chatts) can:
+
+1. **Verbatim delivery** — a controller is an agent that may paraphrase, ask a clarifying question, or act on its own before relaying.
+2. **First-class addressable participant** — with a controller, agents reply to the *controller's* name and it relays; `chat.ts` shows up in `list_participants`, fires join/leave, and agents can address the human back directly.
+3. **No-LLM relay** — `chat.ts` forwards messages with no model in the loop, so there's no per-message token cost or inference latency.
+
+Pick the controller session for smart, summarizing coordination; pick `chat.ts` for direct, cheap, verbatim, addressable participation.
+
 ## Reliability
 
 - **Automatic reconnection** — if the broker restarts or the network blips, each client reconnects with exponential backoff (1s up to 30s) and re-registers. The broker may also be started *after* the clients; they'll connect as soon as it's reachable. While disconnected, `send_message` and `list_participants` return an error instead of hanging.
@@ -157,6 +195,7 @@ claude-chat/
 │   └── marketplace.json         # self-hosted marketplace (lists this plugin)
 ├── .mcp.json                    # registers the MCP client (runs client.ts)
 ├── client.ts                    # MCP channel server — bridges Claude Code <-> broker
+├── chat.ts                      # standalone human terminal client (bun run chat.ts)
 ├── package.json                 # client.ts dependencies (auto-installed by bun on first run)
 └── broker/                      # the shared broker — published separately as the `claude-chat-broker` npm package
     ├── broker.ts                # standalone WebSocket message router
