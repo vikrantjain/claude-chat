@@ -4,7 +4,8 @@
 // protocol directly over a raw WebSocket, so it needs no
 // `--dangerously-load-development-channels` flag. Run it with:
 //
-//   bun run chat.ts [--name <name>] [--broker <ws-url>]
+//   bunx claude-chat-human [--name <name>] [--broker <ws-url>]   # no checkout
+//   bun run chat/chat.ts [--name <name>] [--broker <ws-url>]     # from source
 //
 // Reuses the connection patterns from client.ts (stable instanceId, broker URL
 // from CLAUDE_CHAT_BROKER, derived-name collision self-heal).

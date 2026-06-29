@@ -1,32 +1,33 @@
 {
-  "name": "claude-chat-broker",
+  "name": "claude-chat-human",
   "version": "0.1.1",
   "type": "module",
-  "description": "Standalone WebSocket message router for the claude-chat Claude Code plugin. Run with `bunx claude-chat-broker`.",
+  "description": "Standalone human-facing terminal client for the claude-chat broker — join the channel as a first-class peer. Run with `bunx claude-chat-human`.",
   "author": {
     "name": "Vikrant Jain"
   },
-  "homepage": "https://github.com/vikrantjain/claude-chat/tree/main/broker",
+  "homepage": "https://github.com/vikrantjain/claude-chat/tree/main/chat",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vikrantjain/claude-chat.git",
-    "directory": "broker"
+    "directory": "chat"
   },
   "license": "MIT",
   "keywords": [
     "claude-chat",
-    "broker",
+    "chat",
+    "terminal",
     "websocket",
     "mcp",
     "multi-agent",
     "claude-code"
   ],
   "bin": {
-    "claude-chat-broker": "bin.js"
+    "claude-chat-human": "bin.js"
   },
   "files": [
     "bin.js",
-    "broker.ts",
+    "chat.ts",
     "LICENSE"
   ],
   "engines": {

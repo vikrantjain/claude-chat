@@ -18,14 +18,14 @@ The full real-world walkthrough — three Claude Code instances shipping a cross
 
 ## How it's structured
 
-Two pieces:
+Two required pieces (plus an optional [human client](#human-chat-client-claude-chat-human), covered below):
 
 - The **plugin** (repo root) is client-side and installs **per machine**. It's the MCP channel server (`client.ts`) that bridges your Claude Code session to the broker.
-- The **broker** (`broker/`) is shared infrastructure — *one* instance that every participant connects to, so only the host runs it; everyone else points `CLAUDE_CHAT_BROKER` at it. It's published independently to npm as [`claude-chat-broker`](https://www.npmjs.com/package/claude-chat-broker) (so `bunx claude-chat-broker` just works), and Claude Code's plugin loader ignores the `broker/` directory.
+- The **broker** (`broker/`) is shared infrastructure — *one* instance that every participant connects to, so only the host runs it; everyone else points `CLAUDE_CHAT_BROKER` at it. It's published independently to npm as [`claude-chat-broker`](https://www.npmjs.com/package/claude-chat-broker) (so `bunx claude-chat-broker` just works), and Claude Code's plugin loader ignores the `broker/` and `chat/` directories.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) — runs the broker and the MCP client (`client.ts` deps auto-install on first run).
+- [Bun](https://bun.sh) — runs the broker, the MCP client, and the human client (`client.ts` deps auto-install on first run).
 - Claude Code with **Channels** enabled — it's a research preview; on Team/Enterprise an admin must turn on `channelsEnabled`.
 - **No marketplace of your own is needed** — this repo *is* its own marketplace (see [step 2](#2-install-the-plugin)).
 
@@ -41,7 +41,7 @@ Only **one** person — the host — runs the broker. With [Bun](https://bun.sh)
 bunx claude-chat-broker
 ```
 
-The broker listens on `ws://0.0.0.0:4000` (override with `PORT`, e.g. `PORT=4000 bunx claude-chat-broker`).
+The broker listens on `ws://0.0.0.0:4000` (override with `PORT`, e.g. `PORT=8080 bunx claude-chat-broker`).
 
 <details>
 <summary>Alternative (from source)</summary>
@@ -75,7 +75,7 @@ Instead of adding this repo directly, you can list it as a `github` source in a 
   "name": "claude-chat",
   "source": { "source": "github", "repo": "vikrantjain/claude-chat" },
   "description": "Real-time chat between distributed Claude Code instances via a shared WebSocket broker.",
-  "version": "0.1.0"
+  "version": "0.2.1"
 }
 ```
 
@@ -136,17 +136,28 @@ To confirm it works, ask `alice` to `list_participants`, then to send `bob` a me
 
 Join/leave events are broadcast automatically as instances connect and disconnect.
 
-## Human chat client (`chat.ts`)
+## Human chat client (`claude-chat-human`)
 
-Want to talk to the agents **as a human**, without driving them through a Claude Code session? `chat.ts` is a standalone terminal client that joins the broker as a first-class peer — it shows up in `list_participants`, fires join/leave, and agents can address it by name.
+Want to talk to the agents **as a human**, without driving them through a Claude Code session? `claude-chat-human` is a standalone terminal client that joins the broker as a first-class peer — it shows up in `list_participants`, fires join/leave, and agents can address it by name.
 
-It speaks the broker's wire protocol directly over a raw WebSocket, so — unlike the plugin — it is **not** an MCP server or a Claude Code session and needs **no** `--dangerously-load-development-channels` flag. From a checkout of this repo:
+It speaks the broker's wire protocol directly over a raw WebSocket, so — unlike the plugin — it is **not** an MCP server or a Claude Code session and needs **no** `--dangerously-load-development-channels` flag. Like the broker, it's published to npm and run with [Bun](https://bun.sh), so no checkout is needed:
 
 ```bash
-bun run chat.ts                 # name defaults to $USER
-bun run chat.ts --name alice    # explicit name
-bun run chat.ts --broker ws://192.168.1.50:4000
+bunx claude-chat-human                 # name defaults to $USER
+bunx claude-chat-human --name alice    # explicit name
+bunx claude-chat-human --broker ws://192.168.1.50:4000
 ```
+
+<details>
+<summary>Alternative (from source)</summary>
+
+From a checkout of this repo:
+
+```bash
+bun run chat/chat.ts --name alice
+```
+
+</details>
 
 It reuses the plugin's config: broker URL from `--broker` or `CLAUDE_CHAT_BROKER` (default `ws://localhost:4000`), and the name defaults to `$USER` (falling back to `human-<suffix>`). A defaulted name auto-suffixes on collision; an explicit `--name` fails loudly instead of silently renaming.
 
@@ -158,7 +169,7 @@ It reuses the plugin's config: broker URL from `--broker` or `CLAUDE_CHAT_BROKER
 
 **Slash-commands:** `/who` (current roster, instant — no round-trip), `/help`, `/quit`. Ctrl-C also exits. The input line stays pinned at the bottom and is preserved when messages arrive mid-typing, and the client auto-reconnects with backoff if the broker restarts.
 
-> The plugin's agent instructions describe messages as coming from "other Claude Code instances." A human sender over `chat.ts` is functionally identical from the broker's and the agents' point of view — the wording is just historical.
+> The plugin's agent instructions describe messages as coming from "other Claude Code instances." A human sender over `claude-chat-human` is functionally identical from the broker's and the agents' point of view — the wording is just historical.
 
 Prefer not to run a separate process? See the [controller-session alternative](#controller-session-no-code-alternative) below.
 
@@ -166,13 +177,13 @@ Prefer not to run a separate process? See the [controller-session alternative](#
 
 You can already drive the agents today with **zero extra code**: start a *separate* Claude Code session that has this plugin loaded (a "controller session"), and type instructions to it in plain language — it relays them to the other agents via `send_message` and reads their replies back to you. This is genuinely **better** when you want intelligent coordination: the controller can summarize, aggregate, and reword across many agents.
 
-What it *can't* do, and the [direct client](#human-chat-client-chatts) can:
+What it *can't* do, and the [direct client](#human-chat-client-claude-chat-human) can:
 
 1. **Verbatim delivery** — a controller is an agent that may paraphrase, ask a clarifying question, or act on its own before relaying.
-2. **First-class addressable participant** — with a controller, agents reply to the *controller's* name and it relays; `chat.ts` shows up in `list_participants`, fires join/leave, and agents can address the human back directly.
-3. **No-LLM relay** — `chat.ts` forwards messages with no model in the loop, so there's no per-message token cost or inference latency.
+2. **First-class addressable participant** — with a controller, agents reply to the *controller's* name and it relays; `claude-chat-human` shows up in `list_participants`, fires join/leave, and agents can address the human back directly.
+3. **No-LLM relay** — `claude-chat-human` forwards messages with no model in the loop, so there's no per-message token cost or inference latency.
 
-Pick the controller session for smart, summarizing coordination; pick `chat.ts` for direct, cheap, verbatim, addressable participation.
+Pick the controller session for smart, summarizing coordination; pick `claude-chat-human` for direct, cheap, verbatim, addressable participation.
 
 ## Reliability
 
@@ -195,10 +206,14 @@ claude-chat/
 │   └── marketplace.json         # self-hosted marketplace (lists this plugin)
 ├── .mcp.json                    # registers the MCP client (runs client.ts)
 ├── client.ts                    # MCP channel server — bridges Claude Code <-> broker
-├── chat.ts                      # standalone human terminal client (bun run chat.ts)
 ├── package.json                 # client.ts dependencies (auto-installed by bun on first run)
+├── chat/                        # human terminal client — published separately as the `claude-chat-human` npm package
+│   ├── chat.ts                  # standalone raw-WebSocket client (bunx claude-chat-human)
+│   ├── bin.js                   # bun shebang shim (npm rejects .ts as a bin)
+│   └── package.json             # publishes the `claude-chat-human` bin (run via bunx)
 └── broker/                      # the shared broker — published separately as the `claude-chat-broker` npm package
     ├── broker.ts                # standalone WebSocket message router
+    ├── bin.js                   # bun shebang shim (npm rejects .ts as a bin)
     └── package.json             # publishes the `claude-chat-broker` bin (run via bunx)
 ```
 
