@@ -1,6 +1,6 @@
 {
   "name": "claude-chat-human",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Standalone human-facing terminal client for the claude-chat broker — join the channel as a first-class peer. Run with `bunx claude-chat-human`.",
   "author": {
